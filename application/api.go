@@ -2,8 +2,12 @@ package application
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	// "github.com/labstack/echo/v4"
 )
 
 type UserJSON struct {
@@ -47,21 +51,43 @@ func DisplayHomePage(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func DisplayUsers(writer http.ResponseWriter, request *http.Request) {
-	users := []UserJSON{{Id: "6", Username: "minhi1", Role: "Admin", Created_at: time.Now()},
-		{Id: "25", Username: "TR", Role: "Admin", Created_at: time.Now()}}
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
-	jsonData, err := json.Marshal(users)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func UserAuthentication(conn *pgx.Conn) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Println("Method", request.Method)
+		if request.Method != http.MethodPost {
+			http.Error(writer, "Method not allowed!", http.StatusMethodNotAllowed)
+			return
+		}
 
-	writer.Header().Set("Content-Type", "application/json")
+		var loginreq LoginRequest
+		// read the request body (in json format) and save into loginreq
+		err := json.NewDecoder(request.Body).Decode(&loginreq)
 
-	_, err = writer.Write(jsonData)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
+		if err != nil {
+			http.Error(writer, "JSON decoding error!", http.StatusBadRequest)
+			return
+		}
+
+		// username := request.URL.Query().Get("username")
+		// password := request.URL.Query().Get("password")
+
+		signal := FindUser(conn, loginreq.Username, loginreq.Password)
+		// signal := FindUser(conn, username, password)
+		// fmt.Println("username", username)
+		// fmt.Println("password", password)
+		if signal == -1 {
+			writer.Write([]byte("Non-exist"))
+		} else if signal == 0 {
+			writer.Write([]byte("Wrong password"))
+		} else if signal == 1 {
+			writer.Write([]byte("Success login"))
+		} else {
+			writer.Write([]byte("Bruh what the hell"))
+		}
 	}
 }
