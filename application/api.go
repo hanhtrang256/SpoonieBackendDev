@@ -13,8 +13,8 @@ import (
 type UserJSON struct {
 	Signal     string    `json:"signal"`
 	Id         string    `json:"id"`
-	Password   string    `json:"password"`
 	Username   string    `json:"username"`
+	Password   string    `json:"password"`
 	Role       string    `json:"role"`
 	Created_at time.Time `json:"date created"`
 }

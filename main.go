@@ -33,7 +33,7 @@ func main() {
 		port = "8080"
 	}
 
-	// http.ListenAndServe("0.0.0.0:"+port, nil)
-	http.ListenAndServe("localhost:12001", nil)
+	http.ListenAndServe("0.0.0.0:"+port, nil)
+	// http.ListenAndServe("localhost:12001", nil)
 	// application.InsertUser(conn, application.Users{Username: "minhi1", Password: "uia256", Role: "admin", Created_at: time.Now()})
 }
