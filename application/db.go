@@ -43,40 +43,40 @@ func InsertUser(conn *pgx.Conn, user Users) error {
 	err := row.Scan(&user.Id)
 
 	if err != nil {
-		fmt.Println("Error inserting user with id ", user.Id)
+		fmt.Println("Error inserting user with id <insert-user>", user.Id)
 		return err
 	}
-	fmt.Printf("Successfully add user with id %s!\n", user.Id)
+	fmt.Printf("Successfully add user with id %s! <insert-user>\n", user.Id)
 	return nil
 }
 
-// Find and return user ID with username and password
-func FindUser(conn *pgx.Conn, username string, password string) (int, string) {
-	query := `SELECT id,password FROM Users WHERE username = $1`
+// Find user with username and password
+func FindUser(conn *pgx.Conn, username string, password string) int {
+	query := `SELECT password FROM Users WHERE username = $1`
 
 	row := conn.QueryRow(context.Background(), query, username)
-	var scanID, scanPassword string
-	err := row.Scan(&scanID, &scanPassword)
+	var scanPassword string
+	err := row.Scan(&scanPassword)
 
 	if err != nil {
-		return -1, ""
+		return -1
 	}
 
 	if scanPassword != password {
-		return 0, ""
+		return 0
 	}
-	return 1, scanID
+	return 1
 }
 
-func GetUser(conn *pgx.Conn, username string, password string, id string) Users {
-	query := `SELECT * FROM Users WHERE username = $1 AND password = $2 AND id = $3`
+func GetUser(conn *pgx.Conn, username string, password string) Users {
+	query := `SELECT * FROM Users WHERE username = $1 AND password = $2`
 
-	row := conn.QueryRow(context.Background(), query, username, password, id)
+	row := conn.QueryRow(context.Background(), query, username, password)
 	var user Users
 	err := row.Scan(&user.Id, &user.Username, &user.Password, &user.Role, &user.Created_at)
 
 	if err != nil {
-		fmt.Println("Some error getting user!!!")
+		fmt.Printf("Cannot find user with username=%s and password=%s <get-user>!!!\n", username, password)
 		return Users{}
 	}
 

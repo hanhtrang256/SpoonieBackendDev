@@ -11,6 +11,7 @@ import (
 )
 
 type UserJSON struct {
+	Signal     string    `json:"signal"`
 	Id         string    `json:"id"`
 	Password   string    `json:"password"`
 	Username   string    `json:"username"`
@@ -18,8 +19,8 @@ type UserJSON struct {
 	Created_at time.Time `json:"date created"`
 }
 
-func ConvertJSON(user Users) UserJSON {
-	return UserJSON{Id: user.Id, Password: user.Password, Username: user.Username, Role: user.Role, Created_at: user.Created_at}
+func ConvertUserJSON(user Users, alert string) UserJSON {
+	return UserJSON{Signal: alert, Id: user.Id, Password: user.Password, Username: user.Username, Role: user.Role, Created_at: user.Created_at}
 }
 
 func WriteJSON(writer http.ResponseWriter, userJSON UserJSON) {
@@ -46,11 +47,9 @@ func DisplayHomePage(writer http.ResponseWriter, request *http.Request) {
 	tmp := TmpJSON{Hello: "by minhi1"}
 	jsonData, err := json.Marshal(tmp)
 	if err != nil {
-
 	}
 	_, err2 := writer.Write(jsonData)
 	if err2 != nil {
-
 	}
 }
 
@@ -79,19 +78,37 @@ func UserLoginAuth(conn *pgx.Conn) http.HandlerFunc {
 		// username := request.URL.Query().Get("username")
 		// password := request.URL.Query().Get("password")
 
-		signal, scanID := FindUser(conn, loginreq.Username, loginreq.Password)
+		signal := FindUser(conn, loginreq.Username, loginreq.Password)
+		var alert string
 		if signal == -1 {
-			writer.Write([]byte("Username already exists!"))
+			alert = "Username or password is incorrect!"
 		} else if signal == 0 {
-			writer.Write([]byte("Wrong password!"))
+			alert = "Wrong password!"
 		} else if signal == 1 {
-			writer.Write([]byte("Success login!"))
-			user := GetUser(conn, loginreq.Username, loginreq.Password, scanID)
-			userJSON := ConvertJSON(user)
-			WriteJSON(writer, userJSON)
+			alert = "Successful login!"
 		} else {
-			writer.Write([]byte("Bruh what the hell!"))
+			alert = "Bruh what the hell!"
 		}
+
+		user := GetUser(conn, loginreq.Username, loginreq.Password)
+		userJSON := ConvertUserJSON(user, alert)
+		WriteJSON(writer, userJSON)
+
+		// if signal == -1 {
+		// 	fmt.Println("Username already exists!")
+		// 	// writer.Write([]byte("Username already exists!"))
+		// } else if signal == 0 {
+		// 	fmt.Println("Wrong password!")
+		// 	// writer.Write([]byte("Wrong password!"))
+		// } else if signal == 1 {
+		// 	fmt.Println("Successful login!")
+		// 	// writer.Write([]byte("Success login!"))
+		// 	user := GetUser(conn, loginreq.Username, loginreq.Password, scanID)
+		// 	userJSON := ConvertJSON(user)
+		// 	WriteJSON(writer, userJSON)
+		// } else {
+		// 	writer.Write([]byte("Bruh what the hell!"))
+		// }
 	}
 }
 
@@ -116,11 +133,11 @@ func UserSignUp(conn *pgx.Conn) http.HandlerFunc {
 		err = InsertUser(conn, user)
 
 		if err != nil {
-			http.Error(writer, "Some error inserting user! Maybe user already exists!", http.StatusBadRequest)
+			http.Error(writer, "Some error inserting user! <user-sign-up>", http.StatusBadRequest)
 			return
 		}
 
-		userJSON := ConvertJSON(user)
+		userJSON := ConvertUserJSON(user, "successful register")
 		writer.Write([]byte("Successfully register!"))
 		WriteJSON(writer, userJSON)
 	}
