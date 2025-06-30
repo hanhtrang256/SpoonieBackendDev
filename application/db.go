@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -44,26 +43,42 @@ func InsertUser(conn *pgx.Conn, user Users) error {
 	err := row.Scan(&user.Id)
 
 	if err != nil {
-		log.Println("Error inserting user with id ", user.Id)
+		fmt.Println("Error inserting user with id ", user.Id)
 		return err
 	}
 	fmt.Printf("Successfully add user with id %s!\n", user.Id)
 	return nil
 }
 
-func FindUser(conn *pgx.Conn, username string, password string) int {
-	query := `SELECT password FROM Users WHERE username = $1`
+// Find and return user ID with username and password
+func FindUser(conn *pgx.Conn, username string, password string) (int, string) {
+	query := `SELECT id,password FROM Users WHERE username = $1`
 
 	row := conn.QueryRow(context.Background(), query, username)
-	var testPassword string
-	err := row.Scan(&testPassword)
+	var scanID, scanPassword string
+	err := row.Scan(&scanID, &scanPassword)
 
 	if err != nil {
-		return -1
+		return -1, ""
 	}
 
-	if testPassword != password {
-		return 0
+	if scanPassword != password {
+		return 0, ""
 	}
-	return 1
+	return 1, scanID
+}
+
+func GetUser(conn *pgx.Conn, username string, password string, id string) Users {
+	query := `SELECT * FROM Users WHERE username = $1 AND password = $2 AND id = $3`
+
+	row := conn.QueryRow(context.Background(), query, username, password, id)
+	var user Users
+	err := row.Scan(&user.Id, &user.Username, &user.Password, &user.Role, &user.Created_at)
+
+	if err != nil {
+		fmt.Println("Some error getting user!!!")
+		return Users{}
+	}
+
+	return user
 }

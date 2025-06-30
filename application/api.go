@@ -18,27 +18,30 @@ type UserJSON struct {
 	Created_at time.Time `json:"date created"`
 }
 
+func ConvertJSON(user Users) UserJSON {
+	return UserJSON{Id: user.Id, Password: user.Password, Username: user.Username, Role: user.Role, Created_at: user.Created_at}
+}
+
+func WriteJSON(writer http.ResponseWriter, userJSON UserJSON) {
+	writer.Header().Set("Content-Type", "application/json")
+	jsonData, err := json.Marshal(userJSON)
+	if err != nil {
+		fmt.Println("Error converting JSON")
+		return
+	}
+	_, err2 := writer.Write(jsonData)
+	if err2 != nil {
+		fmt.Println("Error writing JSON")
+		return
+	}
+}
+
 type TmpJSON struct {
 	Hello string `json:"hello"`
 }
 
 func DisplayHomePage(writer http.ResponseWriter, request *http.Request) {
-	// users := []UserJSON{{Id: "6", Username: "minhi1", Role: "Admin", Created_at: time.Now()},
-	// 	{Id: "25", Username: "TR", Role: "Admin", Created_at: time.Now()}}
-
-	// jsonData, err := json.Marshal(users)
-	// if err != nil {
-	// 	http.Error(writer, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-
 	writer.Header().Set("Content-Type", "application/json")
-
-	// _, err = writer.Write(jsonData)
-	// if err != nil {
-	// 	http.Error(writer, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
 
 	tmp := TmpJSON{Hello: "by minhi1"}
 	jsonData, err := json.Marshal(tmp)
@@ -51,12 +54,12 @@ func DisplayHomePage(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-type LoginRequest struct {
+type AuthRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-func UserAuthentication(conn *pgx.Conn) http.HandlerFunc {
+func UserLoginAuth(conn *pgx.Conn) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fmt.Println("Method", request.Method)
 		if request.Method != http.MethodPost {
@@ -64,30 +67,61 @@ func UserAuthentication(conn *pgx.Conn) http.HandlerFunc {
 			return
 		}
 
-		var loginreq LoginRequest
+		var loginreq AuthRequest
 		// read the request body (in json format) and save into loginreq
 		err := json.NewDecoder(request.Body).Decode(&loginreq)
 
 		if err != nil {
-			http.Error(writer, "JSON decoding error!", http.StatusBadRequest)
+			http.Error(writer, "JSON decoding error <log in>!", http.StatusBadRequest)
 			return
 		}
 
 		// username := request.URL.Query().Get("username")
 		// password := request.URL.Query().Get("password")
 
-		signal := FindUser(conn, loginreq.Username, loginreq.Password)
-		// signal := FindUser(conn, username, password)
-		// fmt.Println("username", username)
-		// fmt.Println("password", password)
+		signal, scanID := FindUser(conn, loginreq.Username, loginreq.Password)
 		if signal == -1 {
-			writer.Write([]byte("Non-exist"))
+			writer.Write([]byte("Username already exists!"))
 		} else if signal == 0 {
-			writer.Write([]byte("Wrong password"))
+			writer.Write([]byte("Wrong password!"))
 		} else if signal == 1 {
-			writer.Write([]byte("Success login"))
+			writer.Write([]byte("Success login!"))
+			user := GetUser(conn, loginreq.Username, loginreq.Password, scanID)
+			userJSON := ConvertJSON(user)
+			WriteJSON(writer, userJSON)
 		} else {
-			writer.Write([]byte("Bruh what the hell"))
+			writer.Write([]byte("Bruh what the hell!"))
 		}
+	}
+}
+
+func UserSignUp(conn *pgx.Conn) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Println("Method", request.Method)
+		if request.Method != http.MethodPost {
+			http.Error(writer, "Method not allowed!", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var signupreq AuthRequest
+		// read the request body (in json format) and save into loginreq
+		err := json.NewDecoder(request.Body).Decode(&signupreq)
+
+		if err != nil {
+			http.Error(writer, "JSON decoding error <sign up>!", http.StatusBadRequest)
+			return
+		}
+
+		user := Users{Username: signupreq.Username, Password: signupreq.Password, Role: "user", Created_at: time.Now()}
+		err = InsertUser(conn, user)
+
+		if err != nil {
+			http.Error(writer, "Some error inserting user! Maybe user already exists!", http.StatusBadRequest)
+			return
+		}
+
+		userJSON := ConvertJSON(user)
+		writer.Write([]byte("Successfully register!"))
+		WriteJSON(writer, userJSON)
 	}
 }

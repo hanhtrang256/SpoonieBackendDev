@@ -26,7 +26,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", application.DisplayHomePage)
-	http.HandleFunc("/login", application.UserAuthentication(conn))
+	http.HandleFunc("/login", application.UserLoginAuth(conn))
+	http.HandleFunc("/signup", application.UserSignUp(conn))
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
